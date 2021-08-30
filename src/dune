@@ -1,1 +1,4 @@
-(library (name schema))
+(ocamllex lexer)
+
+(library
+ (name schema))
