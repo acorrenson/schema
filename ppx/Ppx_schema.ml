@@ -1,31 +1,23 @@
 open Ppxlib
 
-let expand_schema ~loc ~path:_ ({ pexp_desc; _ } : expression) =
-  match pexp_desc with
-  | Pexp_constant (Pconst_string (txt, _, _)) ->
-    Schema.Schemas.compile_schema ~loc txt
-  | _ ->
-    Location.raise_errorf ~loc "expected string"
+let expand_schema ~loc ~path:_ txt action =
+    Schema.Schemas.compile_schema ~loc txt action
 
-let expand_load_schemas ~loc ~path:_ ({ pexp_desc; _ } : expression) =
-  match pexp_desc with
-  | Pexp_constant (Pconst_string (txt, _, _)) ->
-    Schema.Schemas.load_schemas ~loc txt
-  | _ ->
-    Location.raise_errorf ~loc "expected file name"
-
+let expand_load_schemas ~loc ~path:_ fname action =
+  Schema.Schemas.load_schemas ~loc fname action
+  
 let extension_schema =
   Extension.declare
     "schema"
     Extension.Context.expression
-    Ast_pattern.(single_expr_payload __)
+    Ast_pattern.(single_expr_payload (pexp_tuple ((estring __)^::__^::nil)))
     expand_schema
 
 let extension_load_schemas =
   Extension.declare
     "load_schemas"
     Extension.Context.expression
-    Ast_pattern.(single_expr_payload __)
+    Ast_pattern.(single_expr_payload (pexp_tuple ((estring __)^::__^::nil)))
     expand_load_schemas
 
 

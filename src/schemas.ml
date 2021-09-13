@@ -37,17 +37,32 @@ let count_ref s =
     | Word _ -> ()
   ) s; h, !n
 
-let compile_schema ~loc txt =
+let compile_schema ?fname:(fname = "") ?lno:(lno = 1) ~loc txt action =
   let open (Ast_builder.Make (struct let loc = loc end)) in
   let (toks, _) = try Option.get (schema (explode txt)) with _ ->
-    Ppxlib.Location.raise_errorf ~loc "unable to parse schema '%s'" txt
+    Ppxlib.Location.raise_errorf ~loc "File '%s', line %d:\nunable to parse schema '%s'" fname lno txt
   in
   let (refs, _nrefs) = count_ref toks in
   let h = Hashtbl.create 10 in
   let get r = incr_ref h r; Hashtbl.find h r in
-  let tmp s = "res_" ^ "_" ^ s in
-  let mk_tmp r = ppat_var {txt = (tmp r ^ string_of_int (get r)); loc} in
-  let fields =
+  let mk_tmp r = ppat_var {txt = (r ^ string_of_int (get r)); loc} in
+  let args =
+    Hashtbl.to_seq refs
+    |> List.of_seq
+    |> List.concat_map (fun (r, n) -> List.init n (fun i -> r ^ string_of_int (i + 1)))
+  in
+  let cunit = Nolabel, pexp_construct {txt=Lident "()"; loc} None in
+  let ret = pexp_apply action ((List.map (fun x -> Labelled x, evar x) args) @ [cunit]) in
+  List.fold_left (fun acc e ->
+    match e with
+    | Word w -> [%expr let* _ = p_spaces *> token [%e estring w] in [%e acc]]
+    | Ref r  -> [%expr let* [%p mk_tmp r] = p_spaces *> [%e evar r] in [%e acc]]
+  ) [%expr return [%e ret]] (List.rev toks)
+
+    
+    
+
+  (* let fields =
     Hashtbl.to_seq refs
     |> List.of_seq
     |> List.concat_map (fun (r, n) ->
@@ -63,11 +78,11 @@ let compile_schema ~loc txt =
     match e with
     | Word w -> [%expr let* _ = p_spaces *> token [%e estring w] in [%e acc]]
     | Ref r  -> [%expr let* [%p mk_tmp r] = p_spaces *> [%e evar r] in [%e acc]]
-  ) ret (List.rev toks)
+  ) ret (List.rev toks) *)
 
 (* let f ~loc () = Ast_builder.Default.pexp_record ~loc [({txt = Lident "x"; loc}, assert false) *)
 
-let load_schemas ~loc fname =
+let load_schemas ~loc fname action =
   let read_all input =
     let dict = ref [] in
     try while true do
@@ -78,5 +93,8 @@ let load_schemas ~loc fname =
   let input = try open_in fname with _ ->
     Ppxlib.Location.raise_errorf ~loc "unable to open file '%s'" fname
   in
-  let schemas = List.map (compile_schema ~loc) (read_all input) in
+  let schemas = List.mapi 
+    (fun i s -> compile_schema ~lno:(i + 1) ~fname ~loc s action)
+    (read_all input)
+  in
   [%expr choice [%e Ppxlib.Ast_builder.Default.elist ~loc schemas]]
