@@ -1,0 +1,4 @@
+Let $ident be the $op of $arg and $arg
+$ident is the $op of $arg and $arg
+$ident is the $op of $arg and $arg
+

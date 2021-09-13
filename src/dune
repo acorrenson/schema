@@ -1,4 +1,7 @@
 (ocamllex lexer)
 
 (library
- (name schema))
+ (name schema)
+ (libraries ppxlib)
+ (preprocess
+  (pps ppxlib.metaquot)))

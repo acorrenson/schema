@@ -60,7 +60,7 @@ rule token = parse
   | '"'     { Quote }
   | '\''    { SQuote }
   | white   { token lexbuf }
-  | newline { token lexbuf }
+  | newline { next_line lexbuf; token lexbuf }
   | int     { Int (int_of_string (lexeme lexbuf)) }
   | word    { Word (lexeme lexbuf) }
   | eof     { raise End_of_file }
