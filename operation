@@ -1,0 +1,3 @@
+let $ident be the $op of $arg and $arg
+$ident is the $op of $arg and $arg
+the $op of $arg and $arg results in $ident

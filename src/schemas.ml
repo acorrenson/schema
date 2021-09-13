@@ -22,31 +22,61 @@ let p_spaces = many (check ((=) ' '))
 let schema =
   many1 (p_spaces *> (p_word <|> p_ref))
 
-let get_ref (s : token list) =
-  let rec step acc = function
-    | [] -> acc
-    | Ref r::xs -> step (r::acc) xs
-    | _::xs -> step acc xs
-  in step [] s
+let incr_ref h r =
+  if Hashtbl.mem h r then
+    Hashtbl.replace h r ((Hashtbl.find h r) + 1)
+  else
+    Hashtbl.add h r 1
 
-(* module M = Ast_builder.Make (struct let loc = 1 end) *)
+let count_ref s =
+  let h = Hashtbl.create 10 in
+  let n = ref 0 in
+  List.iter (function
+    | Ref r ->
+      incr n; incr_ref h r
+    | Word _ -> ()
+  ) s; h, !n
 
-let compile_one ~loc prev x next =
+let compile_schema ~loc txt =
   let open (Ast_builder.Make (struct let loc = loc end)) in
-  [%expr fun [%pat x] ->
-    let* rp = token [%e estring prev] in
-    let* rx = [%e evar x] in
-    let* rn = token [%e estring next] in
-    return (rp, rx, rn)
-  ]
+  let (toks, _) = try Option.get (schema (explode txt)) with _ ->
+    Ppxlib.Location.raise_errorf ~loc "unable to parse schema '%s'" txt
+  in
+  let (refs, _nrefs) = count_ref toks in
+  let h = Hashtbl.create 10 in
+  let get r = incr_ref h r; Hashtbl.find h r in
+  let tmp s = "res_" ^ "_" ^ s in
+  let mk_tmp r = ppat_var {txt = (tmp r ^ string_of_int (get r)); loc} in
+  let fields =
+    Hashtbl.to_seq refs
+    |> List.of_seq
+    |> List.concat_map (fun (r, n) ->
+      List.init n (fun i ->
+        let key = r ^ string_of_int (i + 1) in
+        let var = tmp r ^ (string_of_int (i + 1)) in
+        key, evar var))
+    |> List.sort (fun (a, _) (b, _) -> compare a b)
+    |> List.map snd
+  in
+  let ret = [%expr return [%e pexp_tuple fields]] in
+  List.fold_left (fun acc e ->
+    match e with
+    | Word w -> [%expr let* _ = p_spaces *> token [%e estring w] in [%e acc]]
+    | Ref r  -> [%expr let* [%p mk_tmp r] = p_spaces *> [%e evar r] in [%e acc]]
+  ) ret (List.rev toks)
 
-(* let compile_one (s : token list) env =
-  let p_token = function
-    | Word s -> token s
-    | Ref s -> assert false
-  in assert false *)
+(* let f ~loc () = Ast_builder.Default.pexp_record ~loc [({txt = Lident "x"; loc}, assert false) *)
 
-
-  
-
-(* let compile (s : schema) = *)
+let load_schemas ~loc fname =
+  let read_all input =
+    let dict = ref [] in
+    try while true do
+      dict := (input_line input |> String.trim)::!dict
+    done; assert false
+    with End_of_file -> List.rev !dict
+  in
+  let input = try open_in fname with _ ->
+    Ppxlib.Location.raise_errorf ~loc "unable to open file '%s'" fname
+  in
+  let schemas = List.map (compile_schema ~loc) (read_all input) in
+  [%expr choice [%e Ppxlib.Ast_builder.Default.elist ~loc schemas]]
