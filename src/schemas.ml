@@ -32,8 +32,7 @@ let count_ref s =
   let h = Hashtbl.create 10 in
   let n = ref 0 in
   List.iter (function
-    | Ref r ->
-      incr n; incr_ref h r
+    | Ref r -> incr n; incr_ref h r
     | Word _ -> ()
   ) s; h, !n
 
@@ -42,10 +41,10 @@ let compile_schema ?fname:(fname = "") ?lno:(lno = 1) ~loc txt action =
   let (toks, _) = try Option.get (schema (explode txt)) with _ ->
     Ppxlib.Location.raise_errorf ~loc "File '%s', line %d:\nunable to parse schema '%s'" fname lno txt
   in
-  let (refs, _nrefs) = count_ref toks in
+  let (refs, nrefs) = count_ref toks in
   let h = Hashtbl.create 10 in
   let get r = incr_ref h r; Hashtbl.find h r in
-  let mk_tmp r = ppat_var {txt = (r ^ string_of_int (get r)); loc} in
+  let mk_tmp r = ppat_var {txt = (r ^ string_of_int (nrefs - (get r) + 1)); loc} in
   let args =
     Hashtbl.to_seq refs
     |> List.of_seq
@@ -58,29 +57,6 @@ let compile_schema ?fname:(fname = "") ?lno:(lno = 1) ~loc txt action =
     | Word w -> [%expr let* _ = p_spaces *> token [%e estring w] in [%e acc]]
     | Ref r  -> [%expr let* [%p mk_tmp r] = p_spaces *> [%e evar r] in [%e acc]]
   ) [%expr return [%e ret]] (List.rev toks)
-
-    
-    
-
-  (* let fields =
-    Hashtbl.to_seq refs
-    |> List.of_seq
-    |> List.concat_map (fun (r, n) ->
-      List.init n (fun i ->
-        let key = r ^ string_of_int (i + 1) in
-        let var = tmp r ^ (string_of_int (i + 1)) in
-        key, evar var))
-    |> List.sort (fun (a, _) (b, _) -> compare a b)
-    |> List.map snd
-  in
-  let ret = [%expr return [%e pexp_tuple fields]] in
-  List.fold_left (fun acc e ->
-    match e with
-    | Word w -> [%expr let* _ = p_spaces *> token [%e estring w] in [%e acc]]
-    | Ref r  -> [%expr let* [%p mk_tmp r] = p_spaces *> [%e evar r] in [%e acc]]
-  ) ret (List.rev toks) *)
-
-(* let f ~loc () = Ast_builder.Default.pexp_record ~loc [({txt = Lident "x"; loc}, assert false) *)
 
 let load_schemas ~loc fname action =
   let read_all input =

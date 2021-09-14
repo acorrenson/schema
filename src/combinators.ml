@@ -88,7 +88,7 @@ let explode x =
   List.init (String.length x) (String.get x)
 
 let token (s : string) =
-  implode <$> List.fold_left 
+  List.fold_left 
     (fun acc c -> check ((=) c) <~> acc)
     (return [])
-    (explode s |> List.rev)
+    (explode s |> List.rev) *> return s

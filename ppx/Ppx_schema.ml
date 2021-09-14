@@ -1,11 +1,19 @@
+(** {1 Ppx Schema}
+
+  A syntax extension to generate (at compil time) modular parsers 
+  based on a textual description of language patterns
+*)
+
 open Ppxlib
 
+(** Expand a schema and bind an action *)
 let expand_schema ~loc ~path:_ txt action =
     Schema.Schemas.compile_schema ~loc txt action
 
+(** Load some schemas from a file and bind an action *)
 let expand_load_schemas ~loc ~path:_ fname action =
   Schema.Schemas.load_schemas ~loc fname action
-  
+
 let extension_schema =
   Extension.declare
     "schema"
