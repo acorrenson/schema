@@ -49,7 +49,7 @@ let ret_clause =
   [%schema "it returns $klval", action]
 
 let () =
-  Schema.Sanitizer.sanitize "it returns the sum of 1 and argument 1"
+  Schema.Sanitizer.sanitize "It returns the sum of 1 and argument 1."
   |> List.iter (fun sentence -> 
       let (cons, _) = Option.get (ret_clause (explode sentence)) in
       Format.printf "%a\n" print_constraint cons
