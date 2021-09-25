@@ -32,8 +32,8 @@ let declaration =
 
 Schemas can also be loaded from text files. This is especially convenient when you want to
 declare several formulations of the same pattern.
-For example, the patterns *the $op of $expr and $expr results in $expr* and *let $expr be the $op of $expr and $expr* are similar to
-*$expr is the $op of $expr and $expr*. We can unify these 3 schemas by gathering them in a `declaration.schema` text file:
+For example, the patterns `the $op of $expr and $expr results in $expr` and `let $expr be the $op of $expr and $expr` are similar to
+`$expr is the $op of $expr and $expr`. We can unify these 3 schemas by gathering them in a `declaration.schema` text file:
 
 ```
 the $op of $expr and $expr results in $expr$
