@@ -1,6 +1,7 @@
 (ocamllex lexer)
 
 (library
+ (public_name schema)
  (name schema)
  (libraries ppxlib)
  (preprocess
