@@ -92,3 +92,20 @@ let token (s : string) =
     (fun acc c -> check ((=) c) <~> acc)
     (return [])
     (explode s |> List.rev) *> return s
+
+let comp p = fun inp ->
+  match p inp with
+  | Some _ -> None
+  | None -> Some ((), inp)
+
+let look_for (p : ('a, 'b) parser) : ('a, 'b) parser =
+  let rec step inp =
+    match p inp with
+    | Some _ as res -> res
+    | None ->
+      match inp with
+      | [] -> None
+      | _::xs -> step xs
+  in step
+
+  
