@@ -1,3 +1,38 @@
+(**
+  {1 Schemas}
+
+  Schemas are a lightweight formalism to represent patterns in free text.
+  A schema can be compiled down to an ocaml parser recognizing it.
+
+  {2 General idea}
+
+  Suppose we want to parse sentences similar to ["x is the sum of y and z"] but where
+  ["x"], ["y"] and ["z"] can be any sequence of words denoting a mathematical expression and ["sum"]
+  my be any binary operation (e.g. ["product"], ["division"], ["subtraction"], ...).
+  Providing we already defined a parser [expr] recognizing expressions and a parser [op] recognizing
+  binary operation names, a good schema to parse such declarations would be
+  ["$expr is the $operation of $expr and $expr"].
+
+  {2 Using Ppxs to compile schemas}
+
+  Schemas are intended to be compiled down to efficient OCaml parsers. Such parsers are of the form [char list -> (t, char list) option]
+  where [t] is the type of the structure we want to parse. Thus, compiled schemas are compliant with the {! Combinators] api and can be easily}
+  combined and integrated in a more standard parser.
+  
+  Compilation of schemas is performed at ocaml's compile time via the use of syntax extensions (so called Ppx).
+  To compile a schema an action should be provided. Actions are simply functions that are called each time a schema is detected.
+  Subpatterns discovered during the execution of a schema parser are given as labeled arguments to the action function.
+
+  {[
+let declaration =
+  let op = operation_parser in
+  let expr = expression_parser in
+  let action ~expr1 ~op1 ~expr2 () = (op1, expr1, expr2) in
+  [@schema "$expr is the $op of $expr and $expr", action]
+  ]}
+*)
+
+
 open Combinators
 open Ppxlib
 
